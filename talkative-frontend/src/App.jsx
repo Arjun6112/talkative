@@ -15,15 +15,13 @@ import io from "socket.io-client";
 
 // Dynamic socket URL based on current host
 const getSocketURL = () => {
-  // Always use Railway backend in production
   if (
     window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1"
   ) {
-    return "https://talkative-production-8690.up.railway.app";
+    return "https://talkative-ogx9.onrender.com/"; // Replace with actual URL
   }
 
-  // Local development
   return "http://localhost:3001";
 };
 
