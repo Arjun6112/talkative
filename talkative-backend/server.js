@@ -8,7 +8,11 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173"], // HTTP localhost only
+    origin: [
+      "http://localhost:5173",
+      "https://your-netlify-app.netlify.app",
+      "https://talkative-production-8690.up.railway.app",
+    ],
     methods: ["GET", "POST"],
   },
   transports: ["websocket", "polling"],
@@ -154,9 +158,14 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, "localhost", () => {
+server.listen(PORT, "0.0.0.0", () => {
+  const isProduction = process.env.NODE_ENV === "production";
+  const baseUrl = isProduction
+    ? "https://talkative-production-8690.up.railway.app"
+    : `http://localhost:${PORT}`;
+
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📱 Local access: http://localhost:${PORT}`);
-  console.log(`🔍 Health check: http://localhost:${PORT}/health`);
+  console.log(`📱 Access: ${baseUrl}`);
+  console.log(`🔍 Health check: ${baseUrl}/health`);
   console.log("👥 Waiting for connections...");
 });
