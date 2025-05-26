@@ -8,41 +8,35 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://talkativ.netlify.app",
-      "https://talkative-production-8690.up.railway.app",
-    ],
+    origin: "*", // Allow all origins temporarily for debugging
     methods: ["GET", "POST"],
-    credentials: true,
   },
   transports: ["websocket", "polling"],
-  allowEIO3: true,
 });
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://talkativ.netlify.app",
-      "https://talkative-production-8690.up.railway.app",
-    ],
+    origin: "*", // Allow all origins temporarily for debugging
     methods: ["GET", "POST"],
-    credentials: true,
   })
 );
 app.use(express.json());
 
 // Add a simple health check endpoint
 app.get("/health", (req, res) => {
-  const PORT = process.env.PORT || 3001;
-  res.json({
-    status: "Server is running",
-    timestamp: new Date().toISOString(),
-    port: PORT,
-    cors: "enabled",
-    env: process.env.NODE_ENV || "development",
-  });
+  try {
+    res.status(200).json({
+      status: "OK",
+      timestamp: new Date().toISOString(),
+      port: process.env.PORT || 3001,
+      message: "Server is healthy",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "ERROR",
+      error: error.message,
+    });
+  }
 });
 
 // Add a root endpoint
@@ -190,17 +184,11 @@ const PORT = process.env.PORT || 3001;
 // Add error handling for server startup
 server.on("error", (error) => {
   console.error("❌ Server error:", error);
+  process.exit(1);
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  const isProduction = process.env.NODE_ENV === "production";
-  const baseUrl = isProduction
-    ? "https://talkative-production-8690.up.railway.app"
-    : `http://localhost:${PORT}`;
-
+server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📱 Access: ${baseUrl}`);
-  console.log(`🔍 Health check: ${baseUrl}/health`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🔍 Health check available`);
   console.log("👥 Waiting for connections...");
 });
