@@ -35,11 +35,13 @@ app.use(express.json());
 
 // Add a simple health check endpoint
 app.get("/health", (req, res) => {
+  const PORT = process.env.PORT || 3001;
   res.json({
     status: "Server is running",
     timestamp: new Date().toISOString(),
     port: PORT,
     cors: "enabled",
+    env: process.env.NODE_ENV || "development",
   });
 });
 
@@ -184,6 +186,12 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
+
+// Add error handling for server startup
+server.on("error", (error) => {
+  console.error("❌ Server error:", error);
+});
+
 server.listen(PORT, "0.0.0.0", () => {
   const isProduction = process.env.NODE_ENV === "production";
   const baseUrl = isProduction
@@ -193,5 +201,6 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📱 Access: ${baseUrl}`);
   console.log(`🔍 Health check: ${baseUrl}/health`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log("👥 Waiting for connections...");
 });
