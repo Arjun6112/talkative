@@ -14,11 +14,23 @@ const io = new Server(server, {
       "https://talkative-production-8690.up.railway.app",
     ],
     methods: ["GET", "POST"],
+    credentials: true,
   },
   transports: ["websocket", "polling"],
+  allowEIO3: true,
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://talkativ.netlify.app",
+      "https://talkative-production-8690.up.railway.app",
+    ],
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Add a simple health check endpoint
@@ -26,6 +38,20 @@ app.get("/health", (req, res) => {
   res.json({
     status: "Server is running",
     timestamp: new Date().toISOString(),
+    port: PORT,
+    cors: "enabled",
+  });
+});
+
+// Add a root endpoint
+app.get("/", (req, res) => {
+  res.json({
+    message: "Talkative Backend API",
+    status: "running",
+    endpoints: {
+      health: "/health",
+      socket: "Socket.IO enabled",
+    },
   });
 });
 
