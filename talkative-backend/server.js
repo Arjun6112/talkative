@@ -43,9 +43,21 @@ function getLocalIPs() {
 // Store waiting users
 const waitingUsers = new Set();
 const activeConnections = new Map();
+const connectedUsers = new Set(); // Track all connected users
+
+// Function to broadcast user count to all clients
+function broadcastUserCount() {
+  const userCount = connectedUsers.size;
+  io.emit("user-count", userCount);
+  console.log(`👥 Broadcasting user count: ${userCount}`);
+}
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id} from ${socket.handshake.address}`);
+
+  // Add user to connected users and broadcast count
+  connectedUsers.add(socket.id);
+  broadcastUserCount();
 
   socket.on("find-peer", () => {
     console.log(`User ${socket.id} looking for peer`);
@@ -124,8 +136,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
 
-    // Remove from waiting list
+    // Remove from all sets and maps
     waitingUsers.delete(socket.id);
+    connectedUsers.delete(socket.id);
 
     // Notify peer if they were in a chat
     const peerId = activeConnections.get(socket.id);
@@ -134,6 +147,9 @@ io.on("connection", (socket) => {
       activeConnections.delete(peerId);
     }
     activeConnections.delete(socket.id);
+
+    // Broadcast updated user count
+    broadcastUserCount();
   });
 });
 

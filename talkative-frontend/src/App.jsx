@@ -8,6 +8,8 @@ import {
   Users,
   SkipForward,
   Send,
+  Sun,
+  Moon,
 } from "lucide-react";
 import io from "socket.io-client";
 
@@ -28,16 +30,18 @@ const SOCKET_URL = getSocketURL();
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState(0); // Track online user count
   const [isSearching, setIsSearching] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [hasVideoPermission, setHasVideoPermission] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [socket, setSocket] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [peerConnection, setPeerConnection] = useState(null);
-  
+
   // Chat state
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState("");
@@ -66,6 +70,7 @@ function App() {
     newSocket.on("disconnect", (reason) => {
       console.log("❌ Disconnected from server:", reason);
       setIsConnected(false);
+      setOnlineUsers(0); // Reset user count on disconnect
     });
 
     newSocket.on("connect_error", (error) => {
@@ -74,12 +79,9 @@ function App() {
       setIsConnected(false);
     });
 
-    newSocket.on("reconnect", (attemptNumber) => {
-      console.log("🔄 Reconnected after", attemptNumber, "attempts");
-    });
-
-    newSocket.on("reconnect_error", (error) => {
-      console.log("🔄 Reconnection failed:", error.message);
+    newSocket.on("user-count", (count) => {
+      console.log("👥 Online users:", count);
+      setOnlineUsers(count);
     });
 
     newSocket.on("matched", handleMatched);
@@ -224,14 +226,16 @@ function App() {
       }
     } catch (error) {
       console.error("Error accessing media devices:", error);
-      
+
       let errorMessage = error.message;
       if (error.name === "NotAllowedError") {
-        errorMessage = "Camera/microphone access was denied. You can still use text chat.";
+        errorMessage =
+          "Camera/microphone access was denied. You can still use text chat.";
       } else if (error.name === "NotFoundError") {
-        errorMessage = "No camera or microphone found. You can still use text chat.";
+        errorMessage =
+          "No camera or microphone found. You can still use text chat.";
       }
-      
+
       alert(`Camera/Microphone error: ${errorMessage}`);
     }
   };
@@ -286,8 +290,37 @@ function App() {
     startSearch();
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add("dark");
+      document.body.style.background =
+        "linear-gradient(135deg, #111827 0%, #1f2937 100%)";
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.body.style.background =
+        "linear-gradient(135deg, #fef9e7 0%, #ffffff 100%)";
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  // Initialize theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      document.body.style.background =
+        "linear-gradient(135deg, #111827 0%, #1f2937 100%)";
+    } else {
+      document.body.style.background =
+        "linear-gradient(135deg, #fef9e7 0%, #ffffff 100%)";
+    }
+  }, []);
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+    <div className="app-container">
       {/* Header */}
       <header className="header">
         <div className="container">
@@ -296,13 +329,32 @@ function App() {
               <MessageSquare size={24} />
               <h1>Talkative</h1>
             </div>
-            <div className="status-indicator">
-              <div
-                className={`status-dot ${
-                  isConnected ? "status-connected" : "status-disconnected"
-                }`}
-              />
-              <span>{isConnected ? "Connected" : "Disconnected"}</span>
+
+            <div className="header-right">
+              <div className="status-indicator">
+                <div
+                  className={`status-dot ${
+                    isConnected ? "status-connected" : "status-disconnected"
+                  }`}
+                />
+                <span>
+                  {isConnected
+                    ? `${onlineUsers} ${
+                        onlineUsers === 1 ? "person" : "people"
+                      } online`
+                    : "Disconnected"}
+                </span>
+              </div>
+
+              <button
+                onClick={toggleTheme}
+                className="theme-toggle"
+                title={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
+              >
+                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
             </div>
           </div>
         </div>
@@ -333,7 +385,8 @@ function App() {
                     </button>
 
                     <div className="text-xs text-muted text-center">
-                      Camera and microphone are optional - you can chat with text first
+                      Camera and microphone are optional - you can chat with
+                      text first
                     </div>
                   </div>
                 </div>
@@ -382,23 +435,30 @@ function App() {
                     <div className="chat-empty">
                       <MessageSquare size={24} />
                       <p>Say hello to start the conversation!</p>
-                      <small className="text-muted">You can enable video anytime using the controls below</small>
+                      <small className="text-muted">
+                        You can enable video anytime using the controls below
+                      </small>
                     </div>
                   ) : (
                     messages.map((message, index) => (
                       <div
                         key={index}
                         className={`message ${
-                          message.sender === "you" ? "message-sent" : "message-received"
+                          message.sender === "you"
+                            ? "message-sent"
+                            : "message-received"
                         }`}
                       >
                         <div className="message-content">
                           <p>{message.text}</p>
                           <span className="message-time">
-                            {new Date(message.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {new Date(message.timestamp).toLocaleTimeString(
+                              [],
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
                           </span>
                         </div>
                       </div>
@@ -467,9 +527,17 @@ function App() {
                 <button
                   onClick={toggleVideo}
                   className={`btn btn-lg ${
-                    hasVideoPermission && isVideoEnabled ? "btn-primary" : "btn-outline"
+                    hasVideoPermission && isVideoEnabled
+                      ? "btn-primary"
+                      : "btn-outline"
                   }`}
-                  title={!hasVideoPermission ? "Enable camera" : isVideoEnabled ? "Turn off camera" : "Turn on camera"}
+                  title={
+                    !hasVideoPermission
+                      ? "Enable camera"
+                      : isVideoEnabled
+                      ? "Turn off camera"
+                      : "Turn on camera"
+                  }
                 >
                   {hasVideoPermission && isVideoEnabled ? (
                     <Video size={16} />
@@ -481,9 +549,17 @@ function App() {
                 <button
                   onClick={toggleAudio}
                   className={`btn btn-lg ${
-                    hasVideoPermission && isAudioEnabled ? "btn-primary" : "btn-outline"
+                    hasVideoPermission && isAudioEnabled
+                      ? "btn-primary"
+                      : "btn-outline"
                   }`}
-                  title={!hasVideoPermission ? "Enable microphone" : isAudioEnabled ? "Mute microphone" : "Unmute microphone"}
+                  title={
+                    !hasVideoPermission
+                      ? "Enable microphone"
+                      : isAudioEnabled
+                      ? "Mute microphone"
+                      : "Unmute microphone"
+                  }
                 >
                   {hasVideoPermission && isAudioEnabled ? (
                     <Mic size={16} />
